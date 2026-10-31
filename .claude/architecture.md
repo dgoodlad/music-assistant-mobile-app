@@ -268,6 +268,17 @@ actual class PlatformFeature {
 - Split large composables into smaller files by meaning
 - Previews only when explicitly requested
 
+### Player window geometry
+
+The iOS Compose host publishes active UIKit divisions and occlusions (iOS 27.1+)
+through its `PlayerWindowGeometry`; other platforms and older iOS leave it empty.
+Expanded `PlayersPager` uses top/horizontal safe-drawing insets. `PlayerPaneLayout`
+keeps player and queue on opposite sides of an intersecting active division, with
+scrollable, clipped folded panes and stable player composition. Without a division
+it keeps the ordinary 2:1 or collapsible-queue layout. Never key layout on a device
+name or create another player/session for a pose. See `docs/plans/iphone-duo-audit.md`
+for simulator evidence and remaining server-backed acceptance gates.
+
 ## State Management
 
 ```kotlin

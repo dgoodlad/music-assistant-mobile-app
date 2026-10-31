@@ -9,6 +9,7 @@
 package io.music_assistant.client
 
 import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ComposeUiFlags
 import androidx.compose.ui.isDialogAnimationEnabled
 import androidx.compose.ui.window.ComposeUIViewController
@@ -16,6 +17,8 @@ import io.music_assistant.client.di.initKoin
 import io.music_assistant.client.di.iosModule
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.ui.compose.App
+import io.music_assistant.client.ui.compose.home.players.LocalPlayerWindowGeometry
+import io.music_assistant.client.ui.compose.home.players.PlayerWindowGeometry
 import kotlinx.cinterop.staticCFunction
 import platform.Foundation.NSException
 import platform.Foundation.NSFileManager
@@ -59,9 +62,13 @@ private val kmpBootstrap: Unit by lazy {
 @Suppress(
     "FunctionNaming",
 ) // iOS factory function intentionally PascalCase; called from Swift as if it were a constructor
-fun MainViewController() = ComposeUIViewController(
+fun MainViewController(geometry: PlayerWindowGeometry) = ComposeUIViewController(
     configure = { bootstrapKmp() },
-) { App() }
+) {
+    CompositionLocalProvider(LocalPlayerWindowGeometry provides geometry) {
+        App()
+    }
+}
 
 private fun cleanupStaleLogFile() {
     NSFileManager.defaultManager.removeItemAtPath(

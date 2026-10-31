@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -153,10 +152,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
-// Width split between the player pane and the side queue pane when both are shown.
-private const val PLAYER_PANE_WEIGHT = 2f
-private const val QUEUE_PANE_WEIGHT = 1f
-
 @Composable
 fun PlayersPager(
     playerPagerState: PagerState,
@@ -248,7 +243,7 @@ fun PlayersPager(
             Modifier
         } else {
             Modifier.windowInsetsPadding(
-                WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
         }
         Column(modifier = modifier) {
@@ -567,96 +562,98 @@ private fun ExpandedPlayerPage(
             }
         }
     }
-    Column(
-        modifier = Modifier.padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CenteredThreeSlotRow(
-            modifier = Modifier.fillMaxWidth(),
-            start = {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        "Collapse",
-                        modifier = Modifier.size(32.dp),
-                    )
-                }
-            },
-            center = {
-                PlayerSelectionButton(
-                    player = player,
-                    controlTint = colors.controlTint,
-                    sendSpinState = sendspinState,
-                    onSelectPlayer = onSelectPlayer,
-                )
-            },
-            end = {
-                PlayerOverflowMenu(
-                    currentPlayer = player,
-                    allPlayers = allPlayers,
-                    playerAction = { playerAction(player, it) },
-                    queueAction = queueAction,
-                    navigateToItem = navigateAndClose,
-                    onPlayerSelected = { moveToPlayer(it) },
-                    onOpenDsp = onDspButton,
-                    onAnnounce = onAnnounceButton,
-                    onAmbientSound = onAmbientSoundButton,
-                    onAddToPlaylist = onAddToPlaylist,
-                    queueDjMenu = queueDjMenu,
-                    onQueueDjSelected = onQueueDjSelected,
-                )
-            },
-        )
-
-        // Status badges live on their own fixed-height row so appearing/disappearing
-        // badges never reflow the player below, and so they never compete with the
-        // player name for width.
-        PlayerBadgesRow(
-            player = player,
-            tint = colors.controlTint,
-            onSleepTimerClick = onSleepTimerButton,
-            onToggleAutoplay = { current ->
-                playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
-            },
-            onToggleCrossfade = { current ->
-                playerAction(player, PlayerAction.ToggleCrossfade(current = current))
-            },
-        )
-
-        AnimatedVisibility(
-            visible = isQueueExpanded,
-            enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-            exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .fillMaxWidth()
-                    .wrapContentSize()
-                    .clickable { onExpandQueue(false) },
+    PlayerPaneLayout(
+        sideQueue = showSideQueue,
+        queueAvailable = player.queue is DataState.Data,
+        header = { separateQueue ->
+            Column(
+                modifier = Modifier.padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CompactPlayerItem(
-                    modifier = Modifier,
-                    item = player,
-                    colors = colors,
-                    playerAction = playerAction,
-                    onSelectPlayer = if (isWideScreen && !isQueueExpanded) onSelectPlayer else null,
-                    showAdditionalControls = isWideScreen,
-                    sendSpinState = sendspinState,
-                    chapterProgressEnabled = chapterProgressEnabled,
-                    livePositionFlow = livePositionFlow,
+                CenteredThreeSlotRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    start = {
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                Icons.Default.ExpandMore,
+                                "Collapse",
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
+                    },
+                    center = {
+                        PlayerSelectionButton(
+                            player = player,
+                            controlTint = colors.controlTint,
+                            sendSpinState = sendspinState,
+                            onSelectPlayer = onSelectPlayer,
+                        )
+                    },
+                    end = {
+                        PlayerOverflowMenu(
+                            currentPlayer = player,
+                            allPlayers = allPlayers,
+                            playerAction = { playerAction(player, it) },
+                            queueAction = queueAction,
+                            navigateToItem = navigateAndClose,
+                            onPlayerSelected = { moveToPlayer(it) },
+                            onOpenDsp = onDspButton,
+                            onAnnounce = onAnnounceButton,
+                            onAmbientSound = onAmbientSoundButton,
+                            onAddToPlaylist = onAddToPlaylist,
+                            queueDjMenu = queueDjMenu,
+                            onQueueDjSelected = onQueueDjSelected,
+                        )
+                    },
                 )
-            }
-        }
 
-        Row {
+                // Status badges live on their own fixed-height row so appearing/disappearing
+                // badges never reflow the player below, and so they never compete with the
+                // player name for width.
+                PlayerBadgesRow(
+                    player = player,
+                    tint = colors.controlTint,
+                    onSleepTimerClick = onSleepTimerButton,
+                    onToggleAutoplay = { current ->
+                        playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
+                    },
+                    onToggleCrossfade = { current ->
+                        playerAction(player, PlayerAction.ToggleCrossfade(current = current))
+                    },
+                )
+
+                AnimatedVisibility(
+                    visible = isQueueExpanded && !separateQueue,
+                    enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                    exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .fillMaxWidth()
+                            .wrapContentSize()
+                            .clickable { onExpandQueue(false) },
+                    ) {
+                        CompactPlayerItem(
+                            modifier = Modifier,
+                            item = player,
+                            colors = colors,
+                            playerAction = playerAction,
+                            onSelectPlayer = if (isWideScreen && !isQueueExpanded) onSelectPlayer else null,
+                            showAdditionalControls = isWideScreen,
+                            sendSpinState = sendspinState,
+                            chapterProgressEnabled = chapterProgressEnabled,
+                            livePositionFlow = livePositionFlow,
+                        )
+                    }
+                }
+            }
+        },
+        player = { showSideQueue, scrollable ->
+            val isQueueExpanded = isQueueExpanded && !showSideQueue
             Column(
                 modifier = Modifier
-                    .padding(top = 8.dp)
-                    .conditional(showSideQueue) {
-                        weight(PLAYER_PANE_WEIGHT)
-                            .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
-                    },
+                    .padding(top = 8.dp),
             ) {
                 Column(
                     modifier = Modifier
@@ -674,45 +671,47 @@ private fun ExpandedPlayerPage(
                         FullPlayerItem(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .pointerInput(
-                                    onClose,
-                                    onExpandQueue,
-                                    showSideQueue,
-                                    dismissThresholdPx,
-                                    minFlingVelocityPx,
-                                ) {
-                                    var totalDrag = 0f
-                                    val velocityTracker = VelocityTracker()
-                                    detectVerticalDragGestures(
-                                        onDragStart = {
-                                            totalDrag = 0f
-                                            velocityTracker.resetTracking()
-                                        },
-                                        onDragCancel = {
-                                            totalDrag = 0f
-                                            velocityTracker.resetTracking()
-                                        },
-                                        onVerticalDrag = { change, dragAmount ->
-                                            totalDrag += dragAmount
-                                            velocityTracker.addPointerInputChange(change)
-                                        },
-                                        onDragEnd = {
-                                            // Fire only on a true fling: far enough AND fast enough,
-                                            // so a slow crawl past the threshold no longer triggers.
-                                            val velocity = velocityTracker.calculateVelocity().y
-                                            if (totalDrag > dismissThresholdPx &&
-                                                velocity > minFlingVelocityPx
-                                            ) {
-                                                onClose()
-                                            } else if (!showSideQueue &&
-                                                totalDrag < -dismissThresholdPx &&
-                                                velocity < -minFlingVelocityPx
-                                            ) {
-                                                onExpandQueue(true)
-                                            }
-                                            totalDrag = 0f
-                                        },
-                                    )
+                                .conditional(!scrollable) {
+                                    pointerInput(
+                                        onClose,
+                                        onExpandQueue,
+                                        showSideQueue,
+                                        dismissThresholdPx,
+                                        minFlingVelocityPx,
+                                    ) {
+                                        var totalDrag = 0f
+                                        val velocityTracker = VelocityTracker()
+                                        detectVerticalDragGestures(
+                                            onDragStart = {
+                                                totalDrag = 0f
+                                                velocityTracker.resetTracking()
+                                            },
+                                            onDragCancel = {
+                                                totalDrag = 0f
+                                                velocityTracker.resetTracking()
+                                            },
+                                            onVerticalDrag = { change, dragAmount ->
+                                                totalDrag += dragAmount
+                                                velocityTracker.addPointerInputChange(change)
+                                            },
+                                            onDragEnd = {
+                                                // Fire only on a true fling: far enough AND fast enough,
+                                                // so a slow crawl past the threshold no longer triggers.
+                                                val velocity = velocityTracker.calculateVelocity().y
+                                                if (totalDrag > dismissThresholdPx &&
+                                                    velocity > minFlingVelocityPx
+                                                ) {
+                                                    onClose()
+                                                } else if (!showSideQueue &&
+                                                    totalDrag < -dismissThresholdPx &&
+                                                    velocity < -minFlingVelocityPx
+                                                ) {
+                                                    onExpandQueue(true)
+                                                }
+                                                totalDrag = 0f
+                                            },
+                                        )
+                                    }
                                 },
                             item = player,
                             colors = colors,
@@ -886,10 +885,11 @@ private fun ExpandedPlayerPage(
                     )
                 }
             }
-
-            if (showSideQueue && player.queue is DataState.Data) {
+        },
+        queue = {
+            if (player.queue is DataState.Data) {
                 Queue(
-                    modifier = Modifier.weight(QUEUE_PANE_WEIGHT),
+                    modifier = Modifier.fillMaxSize(),
                     queue = player.queue,
                     onGoToLibrary = onClose,
                     isQueueExpanded = true,
@@ -903,8 +903,8 @@ private fun ExpandedPlayerPage(
                     },
                 )
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
